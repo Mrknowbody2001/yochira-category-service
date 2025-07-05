@@ -8,6 +8,7 @@ const subCategorySchema = new mongoose.Schema(
       ref: "Category",
       required: true,
     },
+    categoryName: { type: String },
   },
   { timestamps: true }
 );

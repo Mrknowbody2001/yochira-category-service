@@ -4,14 +4,30 @@ import SubCategory from "../Model/SubCategory.js";
 //!main category
 export const createMainCategory = async (req, res, next) => {
   try {
-    const { name } = req.body;
+    const { name, description } = req.body;
 
     if (!name) {
       return res.status(400).json({ message: "Name is required" });
     }
 
+    // Get the last created main category (with highest categoryId)
+    const lastCategory = await Category.findOne({ parentCategory: null }).sort({
+      categoryId: -1,
+    });
+
+    // Generate next categoryId
+    let newId = "001";
+    if (lastCategory && lastCategory.categoryId) {
+      const lastNum = parseInt(lastCategory.categoryId);
+      const nextNum = lastNum + 1;
+      newId = String(nextNum).padStart(3, "0");
+    }
+
+    // Create new main category
     const category = new Category({
+      categoryId: newId,
       name,
+      description,
       parentCategory: null, // Main category has no parent
     });
 
@@ -22,6 +38,7 @@ export const createMainCategory = async (req, res, next) => {
       category,
     });
   } catch (error) {
+    console.error("Error creating category:", error);
     res.status(500).json({
       message: "Internal server error",
       error,
@@ -139,6 +156,7 @@ export const createSubCategory = async (req, res, next) => {
     }
 
     const category = await Category.findById(categoryId);
+    console.log(category);
 
     if (!category) {
       return res.status(404).json({ message: "Parent category not found" });
@@ -147,7 +165,10 @@ export const createSubCategory = async (req, res, next) => {
     const subCategory = new SubCategory({
       name,
       category: categoryId,
+      categoryName: category.name,
     });
+
+    console.log(subCategory);
 
     await subCategory.save();
 
@@ -231,7 +252,10 @@ export const deleteSubCategory = async (req, res, next) => {
 //get all sub category
 export const getAllSubCategories = async (req, res, next) => {
   try {
-    const subCategories = await SubCategory.find({}).populate("category");
+    const subCategories = await SubCategory.find()
+      .populate("category", "name") // only get category name and _id
+      .sort({ createdAt: -1 }); // newest first
+
     res.status(200).json({
       message: "Subcategories fetched successfully",
       subCategories,
