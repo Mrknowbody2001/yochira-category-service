@@ -50,7 +50,7 @@ export const createMainCategory = async (req, res, next) => {
 //delete category
 export const deleteMainCategory = async (req, res, next) => {
   try {
-    const { id } = req.body;
+    const { id } = req.params;
     if (!id) {
       return res.status(400).json({ message: "Id is required" });
     }
@@ -155,20 +155,32 @@ export const createSubCategory = async (req, res, next) => {
         .json({ message: "Name and categoryId are required" });
     }
 
+    // Validate parent category
     const category = await Category.findById(categoryId);
-    console.log(category);
-
     if (!category) {
       return res.status(404).json({ message: "Parent category not found" });
     }
 
+    // Get the last created subcategory (based on subCategoryId)
+    const lastSubCategory = await SubCategory.findOne().sort({
+      subCategoryId: -1,
+    });
+
+    // Generate new subCategoryId
+    let newId = "001";
+    if (lastSubCategory && lastSubCategory.subCategoryId) {
+      const lastNum = parseInt(lastSubCategory.subCategoryId);
+      const nextNum = lastNum + 1;
+      newId = String(nextNum).padStart(3, "0");
+    }
+
+    // Create new subcategory
     const subCategory = new SubCategory({
       name,
       category: categoryId,
       categoryName: category.name,
+      subCategoryId: newId,
     });
-
-    console.log(subCategory);
 
     await subCategory.save();
 
@@ -177,6 +189,7 @@ export const createSubCategory = async (req, res, next) => {
       subCategory,
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       message: "Internal server error",
       error,
@@ -227,7 +240,7 @@ export const updateSubCategory = async (req, res, next) => {
 
 export const deleteSubCategory = async (req, res, next) => {
   try {
-    const { id } = req.body;
+    const { id } = req.params;
     if (!id) {
       return res.status(400).json({ message: "Id is required" });
     }
